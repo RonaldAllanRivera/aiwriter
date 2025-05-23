@@ -1,16 +1,63 @@
 {% extends "generator/base.html" %}
 {% block title %}Generate{% endblock %}
 {% block content %}
-  <form method="post" class="space-y-4">
-    {% csrf_token %}
-    <textarea name="prompt" rows="4" class="w-full p-2 border rounded" placeholder="Enter your topic...">{{ prompt }}</textarea>
-    <button class="bg-blue-600 text-white px-4 py-2 rounded">Generate</button>
-  </form>
 
-  {% if output %}
-    <div class="mt-6 p-4 bg-white rounded shadow">
-      <h2 class="font-bold mb-2">AI Output</h2>
-      <pre class="whitespace-pre-wrap">{{ output }}</pre>
-    </div>
-  {% endif %}
+<h2 class="text-2xl font-bold mb-4">AI Content Generator</h2>
+
+{% if error %}
+  <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+    ⚠️ Error: {{ error }}
+  </div>
+{% endif %}
+
+
+<form method="post" x-data="{ loading: false }" @submit="loading = true" class="space-y-4">
+  {% csrf_token %}
+  
+  <label class="block">
+    <span class="text-sm font-medium">Select Template</span>
+    <select name="template" class="w-full p-2 border rounded">
+      <option value="blog" {% if selected_template == "blog" %}selected{% endif %}>Blog Introduction</option>
+      <option value="product" {% if selected_template == "product" %}selected{% endif %}>Product Description</option>
+      <option value="caption" {% if selected_template == "caption" %}selected{% endif %}>Instagram Caption</option>
+      <option value="ad" {% if selected_template == "ad" %}selected{% endif %}>Google Ad Copy</option>
+      <option value="title" {% if selected_template == "title" %}selected{% endif %}>Product Title</option>
+      <option value="bullets" {% if selected_template == "bullets" %}selected{% endif %}>Amazon Bullet Points</option>
+      <option value="faq" {% if selected_template == "faq" %}selected{% endif %}>FAQ Generator</option>
+      <option value="outline" {% if selected_template == "outline" %}selected{% endif %}>Blog Post Outline</option>
+      <option value="newsletter" {% if selected_template == "newsletter" %}selected{% endif %}>Newsletter Email</option>
+      <option value="testimonial" {% if selected_template == "testimonial" %}selected{% endif %}>Customer Testimonial</option>
+    </select>
+
+  </label>
+
+  <label class="block">
+    <span class="text-sm font-medium">Enter Your Topic</span>
+    <textarea name="prompt" rows="4" class="w-full p-2 border rounded" placeholder="E.g. Handmade soy candle">{{ prompt }}</textarea>
+  </label>
+
+  <button
+    :disabled="loading"
+    class="bg-blue-600 text-white px-4 py-2 rounded flex items-center justify-center min-w-[120px]"
+  >
+    <span x-show="!loading" x-cloak>Generate</span>
+    <span x-show="loading" x-cloak>⏳ Generating...</span>
+  </button>
+</form>
+
+{% if output %}
+  <div id="output-box" class="mt-6 p-4 bg-white rounded shadow">
+    <h3 class="font-bold mb-2">AI Output</h3>
+    <pre class="whitespace-pre-wrap">{{ output }}</pre>
+  </div>
+{% endif %}
+
 {% endblock %}
+
+{% if output %}
+  <script>
+    setTimeout(() => {
+      document.getElementById("output-box").scrollIntoView({ behavior: "smooth" });
+    }, 200);
+  </script>
+{% endif %}

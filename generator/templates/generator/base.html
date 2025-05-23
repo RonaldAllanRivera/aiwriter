@@ -5,6 +5,7 @@
     <title>{% block title %}AIWriter{% endblock %}</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="//unpkg.com/alpinejs" defer></script>
   </head>
   <body class="bg-gray-100 text-gray-900">
     <nav class="bg-white shadow p-4">
@@ -17,5 +18,13 @@
       </div>
     </nav>
     <main class="p-4">{% block content %}{% endblock %}</main>
+    <div
+      x-data="{ show: false }"
+      x-show="show"
+      x-init="show = {{ output|yesno:'true,false' }}; setTimeout(() => show = false, 3000)"
+      class="fixed bottom-4 right-4 bg-green-500 text-white px-4 py-2 rounded shadow"
+    >
+      ✅ Content generated successfully!
+    </div>
   </body>
 </html>

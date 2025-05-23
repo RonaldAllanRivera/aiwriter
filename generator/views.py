@@ -1,33 +1,84 @@
 from django.shortcuts import render
 from django.conf import settings
 import openai
+from openai import APIConnectionError, RateLimitError, AuthenticationError, OpenAIError
 from .models import GenerationLog
+from django.core.paginator import Paginator
 
 
 # Initialize OpenAI client with your API key
 client = openai.OpenAI(api_key=settings.OPENAI_API_KEY)
 
 def generate_view(request):
+    output = ""
+    prompt = ""
+    selected_template = ""
+    error = ""
+
     if request.method == "POST":
         prompt = request.POST.get("prompt")
+        selected_template = request.POST.get("template")
 
-        response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[{"role": "user", "content": prompt}]
-        )
+        try:
+            # Apply template logic
+            if selected_template == "blog":
+                final_prompt = f"Write a friendly blog post introduction about: {prompt}"
+            elif selected_template == "product":
+                final_prompt = f"Create an SEO product description for: {prompt}"
+            elif selected_template == "caption":
+                final_prompt = f"Write a catchy Instagram caption for: {prompt}"
+            elif selected_template == "ad":
+                final_prompt = f"Write a high-converting Google ad headline and description for: {prompt}"
+            elif selected_template == "title":
+                final_prompt = f"Write a compelling product title for: {prompt}"
+            elif selected_template == "bullets":
+                final_prompt = f"List 5 Amazon-style bullet features for: {prompt}"
+            elif selected_template == "faq":
+                final_prompt = f"Generate 3 frequently asked questions and answers about: {prompt}"
+            elif selected_template == "outline":
+                final_prompt = f"Give a blog post outline for a post about: {prompt}"
+            elif selected_template == "newsletter":
+                final_prompt = f"Write a friendly email newsletter about: {prompt}"
+            elif selected_template == "testimonial":
+                final_prompt = f"Write a customer testimonial for a product like: {prompt}"
+            else:
+                final_prompt = prompt  # fallback
 
-        output = response.choices[0].message.content
 
-        # Save to database
-        GenerationLog.objects.create(prompt=prompt, output=output)
+            response = client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[{"role": "user", "content": final_prompt}]
+            )
 
-        return render(request, "generator/generate.html", {
-            "prompt": prompt,
-            "output": output
-        })
+            output = response.choices[0].message.content
 
-    return render(request, "generator/generate.html")
+            # Log it
+            GenerationLog.objects.create(prompt=final_prompt, output=output)
+
+        except APIConnectionError:
+            error = "⚠️ Oops! You're offline or OpenAI servers are unreachable."
+        except RateLimitError:
+            error = "⚠️ Too many requests. Please wait a moment and try again."
+        except AuthenticationError:
+            error = "⚠️ Invalid API key. Please check your credentials."
+        except OpenAIError:
+            error = "⚠️ OpenAI returned an unexpected error. Please try again."
+        except Exception:
+            error = "⚠️ An unknown error occurred. Please try again later."
+
+
+    return render(request, "generator/generate.html", {
+        "prompt": prompt,
+        "output": output,
+        "selected_template": selected_template,
+        "error": error,
+    })
 
 def history_view(request):
-    logs = GenerationLog.objects.order_by('-created_at')[:20]  # latest 20
-    return render(request, "generator/history.html", {"logs": logs})
+    logs_list = GenerationLog.objects.order_by('-created_at')
+    paginator = Paginator(logs_list, 5)  # 5 logs per page
+
+    page_number = request.GET.get("page")
+    page_obj = paginator.get_page(page_number)
+
+    return render(request, "generator/history.html", {"page_obj": page_obj})

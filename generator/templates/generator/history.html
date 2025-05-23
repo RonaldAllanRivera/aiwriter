@@ -4,9 +4,9 @@
 
 <h2 class="text-2xl font-bold mb-4">Recent Generations</h2>
 
-{% if logs %}
+{% if page_obj %}
   <div class="space-y-6">
-    {% for log in logs %}
+    {% for log in page_obj %}
       <div class="bg-white shadow p-4 rounded border border-gray-200">
         <p class="text-sm text-gray-500 mb-2">Generated on {{ log.created_at|date:"Y-m-d H:i" }}</p>
         <p class="font-semibold mb-1">Prompt:</p>
@@ -16,6 +16,26 @@
       </div>
     {% endfor %}
   </div>
+
+  <!-- Pagination controls -->
+  <div class="mt-6 flex justify-between items-center">
+    {% if page_obj.has_previous %}
+      <a href="?page={{ page_obj.previous_page_number }}" class="px-4 py-2 bg-gray-200 rounded">← Previous</a>
+    {% else %}
+      <span></span>
+    {% endif %}
+
+    <span class="text-sm text-gray-600">
+      Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+    </span>
+
+    {% if page_obj.has_next %}
+      <a href="?page={{ page_obj.next_page_number }}" class="px-4 py-2 bg-gray-200 rounded">Next →</a>
+    {% else %}
+      <span></span>
+    {% endif %}
+  </div>
+
 {% else %}
   <p class="text-gray-500">No generations yet.</p>
 {% endif %}
