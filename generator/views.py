@@ -27,3 +27,7 @@ def generate_view(request):
         })
 
     return render(request, "generator/generate.html")
+
+def history_view(request):
+    logs = GenerationLog.objects.order_by('-created_at')[:20]  # latest 20
+    return render(request, "generator/history.html", {"logs": logs})

@@ -1,0 +1,23 @@
+{% extends "generator/base.html" %}
+{% block title %}History{% endblock %}
+{% block content %}
+
+<h2 class="text-2xl font-bold mb-4">Recent Generations</h2>
+
+{% if logs %}
+  <div class="space-y-6">
+    {% for log in logs %}
+      <div class="bg-white shadow p-4 rounded border border-gray-200">
+        <p class="text-sm text-gray-500 mb-2">Generated on {{ log.created_at|date:"Y-m-d H:i" }}</p>
+        <p class="font-semibold mb-1">Prompt:</p>
+        <p class="mb-2 whitespace-pre-wrap">{{ log.prompt }}</p>
+        <p class="font-semibold mb-1">Output:</p>
+        <pre class="bg-gray-100 p-3 rounded whitespace-pre-wrap">{{ log.output }}</pre>
+      </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <p class="text-gray-500">No generations yet.</p>
+{% endif %}
+
+{% endblock %}
