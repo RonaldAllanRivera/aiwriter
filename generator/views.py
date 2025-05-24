@@ -53,7 +53,7 @@ def generate_view(request):
             output = response.choices[0].message.content
 
             # Log it
-            GenerationLog.objects.create(prompt=final_prompt, output=output)
+            GenerationLog.objects.create(user=request.user, prompt=final_prompt, output=output)
 
         except APIConnectionError:
             error = "⚠️ Oops! You're offline or OpenAI servers are unreachable."
@@ -75,10 +75,13 @@ def generate_view(request):
     })
 
 def history_view(request):
-    logs_list = GenerationLog.objects.order_by('-created_at')
-    paginator = Paginator(logs_list, 5)  # 5 logs per page
+    if not request.user.is_authenticated:
+        return redirect("account_login")
 
+    logs = GenerationLog.objects.filter(user=request.user).order_by('-created_at')
+    paginator = Paginator(logs, 5)
     page_number = request.GET.get("page")
     page_obj = paginator.get_page(page_number)
 
     return render(request, "generator/history.html", {"page_obj": page_obj})
+
