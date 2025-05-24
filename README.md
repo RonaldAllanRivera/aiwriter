@@ -1,22 +1,32 @@
 # 📝 AIWriter – AI Content Generator for Small Businesses
 
-AIWriter is a Django-based web app that uses OpenAI's ChatGPT API to help small business owners generate high-quality content like product descriptions, blog posts, and ad copy.
+AIWriter is a Django-based web app powered by OpenAI. It helps small businesses generate high-quality content like blog posts, product descriptions, and ads.
+
+---
 
 ## 🚀 Features
 
-- Simple and clean Tailwind-powered UI (via CDN)
-- OpenAI GPT-3.5 content generation
-- Prompt input + result rendering
-- Database logging of generated content
-- Django admin panel for viewing generation logs
+- 🔐 Email-only authentication with django-allauth
+- 🔁 Social login via Google (fast login experience)
+- 🧠 AI-powered content generation using GPT-3.5
+- 🧾 Prompt templates (blog, FAQ, product intro, etc.)
+- 📚 Personal generation history with pagination
+- 🎨 Fully styled UI with Tailwind + Alpine.js
+- 💡 Login-required views with helpful messages
+- 🏠 Smart root URL: redirects or shows welcome page
+- 🔐 Secure custom user model with no username field
+- ✅ Ready for deployment on Render, Heroku, etc.
 
-## 📦 Tech Stack
+---
 
-- Backend: Django 5.x, Python 3.x
-- Frontend: Tailwind CSS via CDN
-- AI API: OpenAI GPT-3.5 (ChatCompletion endpoint)
-- Database: SQLite (for dev), PostgreSQL recommended for production
-- Deployment target: Render.com
+## 🛠 Tech Stack
+
+- **Backend**: Django 5, Python 3.13
+- **Frontend**: Tailwind CSS (CDN) + Alpine.js
+- **AI API**: OpenAI GPT-3.5 (via ChatCompletion)
+- **Auth**: django-allauth (email + Google login)
+
+---
 
 ## 🔧 Local Setup
 
@@ -26,21 +36,35 @@ cd aiwriter
 python -m venv venv
 venv\Scripts\activate  # or source venv/bin/activate
 pip install -r requirements.txt
-cp .env.example .env  # then add your OpenAI API key
+cp .env.example .env  # Add your API key and SMTP config
 python manage.py migrate
 python manage.py runserver
 ```
 
-## 🧪 Demo Usage
+---
 
-1. Go to `/generate/`
-2. Enter a prompt (e.g., "Write a product description for a handmade candle")
-3. Submit and wait for the output
-4. Log into `/admin/` to view generation history
+## 📁 Environment Variables (.env)
+
+```env
+SECRET_KEY=your-django-secret-key
+DEBUG=True
+OPENAI_API_KEY=your-openai-api-key
+
+EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend
+EMAIL_HOST=smtp.example.com
+EMAIL_PORT=587
+EMAIL_USE_TLS=True
+EMAIL_HOST_USER=you@example.com
+EMAIL_HOST_PASSWORD=your-password
+
+GOOGLE_CLIENT_ID=your-google-client-id
+GOOGLE_CLIENT_SECRET=your-google-secret
+ALLOWED_HOSTS=127.0.0.1,localhost
+```
+
+---
 
 ## 📄 License
 
-MIT – feel free to build on this.
-
----
+MIT – feel free to modify and use.
 © 2025 Allan Rivera

@@ -46,13 +46,15 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'generator',
     'accounts',
+    'users',
 ]
 
 INSTALLED_APPS += [
     "django.contrib.sites",     # Required for AllAuth
     "allauth",
     "allauth.account",
-    "allauth.socialaccount",    # Optional, safe to include
+    "allauth.socialaccount",
+    "allauth.socialaccount.providers.google",
 ]
 
 MIDDLEWARE = [
@@ -144,8 +146,11 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # AllAuth Behavior
 SITE_ID = 1
 
-ACCOUNT_LOGIN_METHODS = {"username", "email"}
-ACCOUNT_SIGNUP_FIELDS = ["email*", "username*", "password1*", "password2*"]
+ACCOUNT_USERNAME_REQUIRED = False
+ACCOUNT_AUTHENTICATION_METHOD = "email"
+ACCOUNT_USER_MODEL_USERNAME_FIELD = None
+ACCOUNT_SIGNUP_FIELDS = ["email*", "password1*", "password2*"]
+
 
 # This line enables email confirmation only in production
 ACCOUNT_EMAIL_VERIFICATION = "none" if DEBUG else "mandatory"
@@ -169,5 +174,25 @@ SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
 X_FRAME_OPTIONS = 'DENY'
 
+LOGIN_URL = "/accounts/login/"
 LOGIN_REDIRECT_URL = "/generate/"
 ACCOUNT_LOGOUT_REDIRECT_URL = "/accounts/login/"
+
+SOCIALACCOUNT_PROVIDERS = {
+    'google': {
+        'APP': {
+            'client_id': os.getenv("GOOGLE_CLIENT_ID"),
+            'secret': os.getenv("GOOGLE_CLIENT_SECRET"),
+            'key': ""
+        }
+    }
+}
+
+SOCIALACCOUNT_AUTO_SIGNUP = True
+ACCOUNT_LOGOUT_ON_GET = True  # optional: also auto-logout without confirmation
+SOCIALACCOUNT_ADAPTER = "accounts.adapters.AutoLinkSocialAccountAdapter"
+
+ACCOUNT_UNIQUE_EMAIL = True
+SOCIALACCOUNT_QUERY_EMAIL = True
+
+AUTH_USER_MODEL = "users.CustomUser"

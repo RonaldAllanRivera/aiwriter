@@ -27,7 +27,7 @@
         {% if request.user.is_authenticated %}
           <a href="/generate/">Generate</a>
           <a href="/history/">History</a>
-          <a href="{% url 'account_logout' %}">Logout ({{ request.user.username }})</a>
+          <a href="{% url 'account_logout' %}">Logout ({{ request.user.email }})</a>
         {% else %}
           <a href="{% url 'account_login' %}">Login</a>
           <a href="{% url 'account_signup' %}">Register</a>
@@ -37,6 +37,16 @@
 
   </div>
   </nav>
+
+  {% if messages %}
+  <div class="max-w-xl mx-auto mt-6 px-4">
+    {% for message in messages %}
+      <div class="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-800 p-4 rounded mb-2">
+        {{ message }}
+      </div>
+    {% endfor %}
+  </div>
+  {% endif %}
 
     <main class="p-4">{% block content %}{% endblock %}</main>
     <div

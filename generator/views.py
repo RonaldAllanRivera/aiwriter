@@ -4,11 +4,29 @@ import openai
 from openai import APIConnectionError, RateLimitError, AuthenticationError, OpenAIError
 from .models import GenerationLog
 from django.core.paginator import Paginator
+from django.contrib.auth.decorators import login_required
+from django.contrib import messages
+from django.shortcuts import render, redirect
 
 
 # Initialize OpenAI client with your API key
 client = openai.OpenAI(api_key=settings.OPENAI_API_KEY)
 
+def home_view(request):
+    if request.user.is_authenticated:
+        return redirect('generate')  # or "/generate/"
+    return render(request, "home.html")
+
+
+def login_required_with_message(view_func):
+    def wrapper(request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            messages.info(request, "Please log in to access this page.")
+            return redirect(f"/accounts/login/?next={request.path}")
+        return view_func(request, *args, **kwargs)
+    return wrapper
+
+@login_required_with_message
 def generate_view(request):
     output = ""
     prompt = ""
@@ -74,6 +92,7 @@ def generate_view(request):
         "error": error,
     })
 
+@login_required_with_message
 def history_view(request):
     if not request.user.is_authenticated:
         return redirect("account_login")
