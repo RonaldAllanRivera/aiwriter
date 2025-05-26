@@ -9,6 +9,12 @@ from django.contrib import messages
 from django.shortcuts import render, redirect
 from users.models import UserProfile
 
+import stripe
+from django.views.decorators.csrf import csrf_exempt
+from django.http import JsonResponse
+
+
+stripe.api_key = settings.STRIPE_SECRET_KEY
 
 # Initialize OpenAI client with your API key
 client = openai.OpenAI(api_key=settings.OPENAI_API_KEY)
@@ -118,3 +124,42 @@ def history_view(request):
 
     return render(request, "generator/history.html", {"page_obj": page_obj})
 
+
+# For Stripe Payment
+def buy_credits(request):
+    return render(request, "generator/buy_credits.html", {
+    "stripe_publishable_key": settings.STRIPE_PUBLISHABLE_KEY
+})
+
+
+
+@csrf_exempt
+def create_checkout_session(request):
+    if request.method == "POST":
+        credit_amount = int(request.POST.get("credits"))
+        price_in_cents = credit_amount * 100  # $1 = 1 credit
+
+        checkout_session = stripe.checkout.Session.create(
+            payment_method_types=["card"],
+            line_items=[{
+                'price_data': {
+                    'currency': 'usd',
+                    'product_data': {'name': f"{credit_amount} AIWriter Credits"},
+                    'unit_amount': price_in_cents,
+                },
+                'quantity': 1,
+            }],
+            mode='payment',
+            success_url=request.build_absolute_uri('/payment/success/') + "?credits=" + str(credit_amount),
+            cancel_url=request.build_absolute_uri('/buy-credits/'),
+            metadata={'user_id': request.user.id}
+        )
+        return JsonResponse({'id': checkout_session.id})
+
+def payment_success(request):
+    credits = int(request.GET.get("credits", 0))
+    profile = request.user.userprofile
+    profile.credits += credits
+    profile.save()
+    messages.success(request, f"✅ {credits} credits added successfully!")
+    return redirect("generate")
