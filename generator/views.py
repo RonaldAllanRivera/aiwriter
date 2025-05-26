@@ -7,6 +7,7 @@ from django.core.paginator import Paginator
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.shortcuts import render, redirect
+from users.models import UserProfile
 
 
 # Initialize OpenAI client with your API key
@@ -33,9 +34,17 @@ def generate_view(request):
     selected_template = ""
     error = ""
 
-    if request.method == "POST":
+    if request.method == "POST":  
+
         prompt = request.POST.get("prompt")
         selected_template = request.POST.get("template")
+
+        # 💳 Credit check
+        profile = UserProfile.objects.get(user=request.user)
+        if profile.credits <= 0:
+            messages.error(request, "❌ You’ve run out of credits. Please upgrade your plan.")
+            return redirect("history")
+
 
         try:
             # Apply template logic
@@ -70,8 +79,13 @@ def generate_view(request):
 
             output = response.choices[0].message.content
 
+            # 💳 Deduct 1 credit and save
+            profile.credits -= 1
+            profile.save()
+
             # Log it
             GenerationLog.objects.create(user=request.user, prompt=final_prompt, output=output)
+
 
         except APIConnectionError:
             error = "⚠️ Oops! You're offline or OpenAI servers are unreachable."

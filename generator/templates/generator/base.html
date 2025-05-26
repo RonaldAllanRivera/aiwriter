@@ -28,6 +28,7 @@
           <a href="/generate/">Generate</a>
           <a href="/history/">History</a>
           <a href="{% url 'account_logout' %}">Logout ({{ request.user.email }})</a>
+          <span class="text-sm text-gray-600">Credits: {{ request.user.userprofile.credits }}</span>
         {% else %}
           <a href="{% url 'account_login' %}">Login</a>
           <a href="{% url 'account_signup' %}">Register</a>
