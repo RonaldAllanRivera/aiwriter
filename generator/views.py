@@ -13,6 +13,8 @@ import stripe
 from django.views.decorators.csrf import csrf_exempt
 from django.http import JsonResponse
 
+from .models import TrialAccessLog
+
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
@@ -33,6 +35,13 @@ def login_required_with_message(view_func):
         return view_func(request, *args, **kwargs)
     return wrapper
 
+# Helper to get client IP
+def get_client_ip(request):
+    x_forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")
+    if x_forwarded_for:
+        return x_forwarded_for.split(",")[0]
+    return request.META.get("REMOTE_ADDR")
+
 
 def generate_view(request):
     output = ""
@@ -40,7 +49,36 @@ def generate_view(request):
     selected_template = ""
     error = ""
 
+    if not request.user.is_authenticated:
+        ip_address = get_client_ip(request)
+
+        if TrialAccessLog.objects.filter(ip_address=ip_address).exists():
+            request.session["guest_credits"] = -1  # Lock display
+            messages.warning(request, "🚫 Free trial already used on this device or network.")
+            return render(request, "generator/generate.html", {
+                "prompt": "",
+                "output": "",
+                "selected_template": "",
+                "error": "",
+                "guest_credits": 0,
+                "trial_ended": True,
+            })
+
+
     if request.method == "POST":
+        # Guest block
+        if not request.user.is_authenticated:
+            guest_credits = request.session.get("guest_credits", 3)
+            ip_address = get_client_ip(request)
+            user_agent = request.META.get("HTTP_USER_AGENT", "")
+
+
+            # Log this IP if not yet stored
+            if not TrialAccessLog.objects.filter(ip_address=ip_address).exists():
+                TrialAccessLog.objects.create(ip_address=ip_address, user_agent=user_agent)
+
+
+
         prompt = request.POST.get("prompt")
         selected_template = request.POST.get("template")
 
@@ -55,8 +93,10 @@ def generate_view(request):
             has_used_trial = request.COOKIES.get("aiwriter_trial") == "true"
 
             if guest_credits <= 0 and has_used_trial:
+                request.session["guest_credits"] = -1  # 🔒 Freeze display
                 messages.warning(request, "🚫 You've already used your free trial. Please sign up to continue.")
                 return redirect("account_signup")
+
 
         try:
             # Template handling
@@ -100,13 +140,19 @@ def generate_view(request):
 
                 # If guest is out of credits, set cookie to block future trials
                 if guest_credits <= 0:
-                    response = redirect("account_signup")
+                    request.session["guest_credits"] = -1
+                    response = render(request, "generator/generate.html", {
+                        "prompt": prompt,
+                        "output": output,
+                        "selected_template": selected_template,
+                        "error": error,
+                        "trial_ended": True,
+                        "guest_credits": 0  # ✅ Add this line
+                    })
                     response.set_cookie("aiwriter_trial", "true", max_age=60*60*24*365)
-                    messages.info(
-                        request,
-                        "🎉 You’ve used your 3 free credits! Create a free account to unlock 10 more credits and save your content history."
-                    )
                     return response
+
+
 
             # Log it (only for logged-in users)
             if request.user.is_authenticated:
@@ -124,11 +170,13 @@ def generate_view(request):
             error = "⚠️ An unknown error occurred. Please try again later."
 
     return render(request, "generator/generate.html", {
-        "prompt": prompt,
-        "output": output,
-        "selected_template": selected_template,
-        "error": error,
+    "prompt": prompt,
+    "output": output,
+    "selected_template": selected_template,
+    "error": error,
+    "guest_credits": request.session.get("guest_credits") if not request.user.is_authenticated else None,
     })
+
 
 
 @login_required_with_message

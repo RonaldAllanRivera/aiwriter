@@ -34,7 +34,14 @@
           <a href="/generate/">Generate</a>
           <a href="{% url 'account_login' %}">Login</a>
           <a href="{% url 'account_signup' %}">Register</a>
-          <span class="text-sm text-gray-600">Trial Credits: {{ request.session.guest_credits|default:3 }}</span>
+          {% if guest_credits is not None %}
+            {% if guest_credits > 0 %}
+              <span class="text-red-600">Trial Credits: {{ guest_credits }}</span>
+            {% else %}
+              <span class="text-red-600">Trial Used</span>
+            {% endif %}
+          {% endif %}
+
         {% endif %}
 
       </div>
