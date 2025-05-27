@@ -1,8 +1,18 @@
 {% extends "generator/base.html" %}
 {% load i18n %}
+{% load socialaccount %}
 
 {% block content %}
-<h2 class="text-2xl font-bold mb-6 text-center">Register</h2>
+<div class="bg-blue-100 border border-blue-300 text-blue-800 text-sm px-4 py-3 rounded mb-6 max-w-md mx-auto">
+  👋 Create a free AIWriter account to:
+  <ul class="list-disc ml-6 mt-2 text-left">
+    <li>Unlock 10 more content generation credits</li>
+    <li>Save your writing history</li>
+    <li>Track purchases and top-ups</li>
+  </ul>
+</div>
+
+<h2 class="text-2xl font-bold mb-4 text-center">Register</h2>
 
 <form method="post" action="{% url 'account_signup' %}" class="space-y-4 max-w-md mx-auto bg-white p-6 rounded shadow">
   {% csrf_token %}
@@ -15,13 +25,19 @@
       {% endif %}
     </div>
   {% endfor %}
-
-  <button type="submit" class="bg-green-600 text-white px-4 py-2 rounded w-full hover:bg-green-700">
+  <button type="submit" class="bg-green-600 text-white px-4 py-2 rounded w-full hover:bg-green-700 transition">
     Register
   </button>
 </form>
 
-<p class="text-center text-sm text-gray-600 mt-4">
+<div class="text-center mt-4">
+  <p class="text-sm text-gray-600">or</p>
+  <a href="{% provider_login_url 'google' %}" class="inline-block mt-2 bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded shadow">
+    Sign up with Google
+  </a>
+</div>
+
+<p class="text-center text-sm text-gray-600 mt-6">
   Already have an account? <a href="{% url 'account_login' %}" class="text-blue-600 hover:underline">Log in</a>
 </p>
 {% endblock %}

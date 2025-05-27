@@ -33,27 +33,33 @@ def login_required_with_message(view_func):
         return view_func(request, *args, **kwargs)
     return wrapper
 
-@login_required_with_message
+
 def generate_view(request):
     output = ""
     prompt = ""
     selected_template = ""
     error = ""
 
-    if request.method == "POST":  
-
+    if request.method == "POST":
         prompt = request.POST.get("prompt")
         selected_template = request.POST.get("template")
 
         # 💳 Credit check
-        profile = UserProfile.objects.get(user=request.user)
-        if profile.credits <= 0:
-            messages.error(request, "❌ You’ve run out of credits. Please upgrade your plan.")
-            return redirect("history")
+        if request.user.is_authenticated:
+            profile = request.user.userprofile
+            if profile.credits <= 0:
+                messages.error(request, "❌ You’ve run out of credits. Please upgrade your plan.")
+                return redirect("buy_credits")
+        else:
+            guest_credits = request.session.get("guest_credits", 3)
+            has_used_trial = request.COOKIES.get("aiwriter_trial") == "true"
 
+            if guest_credits <= 0 and has_used_trial:
+                messages.warning(request, "🚫 You've already used your free trial. Please sign up to continue.")
+                return redirect("account_signup")
 
         try:
-            # Apply template logic
+            # Template handling
             if selected_template == "blog":
                 final_prompt = f"Write a friendly blog post introduction about: {prompt}"
             elif selected_template == "product":
@@ -75,8 +81,7 @@ def generate_view(request):
             elif selected_template == "testimonial":
                 final_prompt = f"Write a customer testimonial for a product like: {prompt}"
             else:
-                final_prompt = prompt  # fallback
-
+                final_prompt = prompt
 
             response = client.chat.completions.create(
                 model="gpt-3.5-turbo",
@@ -85,13 +90,27 @@ def generate_view(request):
 
             output = response.choices[0].message.content
 
-            # 💳 Deduct 1 credit and save
-            profile.credits -= 1
-            profile.save()
+            # 💳 Deduct credits
+            if request.user.is_authenticated:
+                profile.credits -= 1
+                profile.save()
+            else:
+                guest_credits -= 1
+                request.session["guest_credits"] = guest_credits
 
-            # Log it
-            GenerationLog.objects.create(user=request.user, prompt=final_prompt, output=output)
+                # If guest is out of credits, set cookie to block future trials
+                if guest_credits <= 0:
+                    response = redirect("account_signup")
+                    response.set_cookie("aiwriter_trial", "true", max_age=60*60*24*365)
+                    messages.info(
+                        request,
+                        "🎉 You’ve used your 3 free credits! Create a free account to unlock 10 more credits and save your content history."
+                    )
+                    return response
 
+            # Log it (only for logged-in users)
+            if request.user.is_authenticated:
+                GenerationLog.objects.create(user=request.user, prompt=final_prompt, output=output)
 
         except APIConnectionError:
             error = "⚠️ Oops! You're offline or OpenAI servers are unreachable."
@@ -104,13 +123,13 @@ def generate_view(request):
         except Exception:
             error = "⚠️ An unknown error occurred. Please try again later."
 
-
     return render(request, "generator/generate.html", {
         "prompt": prompt,
         "output": output,
         "selected_template": selected_template,
         "error": error,
     })
+
 
 @login_required_with_message
 def history_view(request):
