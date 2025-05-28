@@ -1,3 +1,4 @@
+#generator/views.py
 from django.shortcuts import render
 from django.conf import settings
 import openai
@@ -13,7 +14,8 @@ import stripe
 from django.views.decorators.csrf import csrf_exempt
 from django.http import JsonResponse
 
-from .models import TrialAccessLog
+from .models import GenerationLog, TrialSessionLog
+
 
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
@@ -23,7 +25,9 @@ client = openai.OpenAI(api_key=settings.OPENAI_API_KEY)
 
 def home_view(request):
     if request.user.is_authenticated:
-        return redirect('generate')  # or "/generate/"
+        # Reset guest session data
+        request.session.pop("guest_credits", None)
+        return redirect('generate')
     return render(request, "home.html")
 
 
@@ -49,12 +53,32 @@ def generate_view(request):
     selected_template = ""
     error = ""
 
-    if not request.user.is_authenticated:
-        ip_address = get_client_ip(request)
+    ip_address = get_client_ip(request)
+    user_agent = request.META.get("HTTP_USER_AGENT", "")
+    is_guest = not request.user.is_authenticated
 
-        if TrialAccessLog.objects.filter(ip_address=ip_address).exists():
-            request.session["guest_credits"] = -1  # Lock display
-            messages.warning(request, "🚫 Free trial already used on this device or network.")
+    # Clear guest credit display if authenticated
+    if request.user.is_authenticated:
+        request.session.pop("guest_credits", None)
+
+    # Guest Trial Enforcement
+    else:
+        trial_log, created = TrialSessionLog.objects.get_or_create(ip_address=ip_address)
+
+        # Initialize session trial counter
+        if "guest_credits" not in request.session:
+            # First time — allow 3 credits unless already blocked
+            if trial_log.trial_uses >= 3:
+                request.session["guest_credits"] = 0
+                trial_log.abuse_flag = True
+                trial_log.save()
+            else:
+                request.session["guest_credits"] = 3
+
+        if request.session["guest_credits"] <= 0:
+            trial_log.abuse_flag = True
+            trial_log.save()
+            messages.warning(request, "🎉 You’ve used your 3 free credits! Create a free account to unlock 10 more credits and save your content history.")
             return render(request, "generator/generate.html", {
                 "prompt": "",
                 "output": "",
@@ -64,99 +88,75 @@ def generate_view(request):
                 "trial_ended": True,
             })
 
-
+    # POST handling (Generate Request)
     if request.method == "POST":
-        # Guest block
-        if not request.user.is_authenticated:
-            guest_credits = request.session.get("guest_credits", 3)
-            ip_address = get_client_ip(request)
-            user_agent = request.META.get("HTTP_USER_AGENT", "")
-
-
-            # Log this IP if not yet stored
-            if not TrialAccessLog.objects.filter(ip_address=ip_address).exists():
-                TrialAccessLog.objects.create(ip_address=ip_address, user_agent=user_agent)
-
-
-
         prompt = request.POST.get("prompt")
         selected_template = request.POST.get("template")
 
-        # 💳 Credit check
+        # Credit Check
         if request.user.is_authenticated:
             profile = request.user.userprofile
             if profile.credits <= 0:
                 messages.error(request, "❌ You’ve run out of credits. Please upgrade your plan.")
                 return redirect("buy_credits")
+            
+            # Optional: If user previously had a trial session from same IP
+            ip_address = get_client_ip(request)
+            trial_session = TrialSessionLog.objects.filter(ip_address=ip_address).first()
         else:
             guest_credits = request.session.get("guest_credits", 3)
-            has_used_trial = request.COOKIES.get("aiwriter_trial") == "true"
-
-            if guest_credits <= 0 and has_used_trial:
-                request.session["guest_credits"] = -1  # 🔒 Freeze display
-                messages.warning(request, "🚫 You've already used your free trial. Please sign up to continue.")
-                return redirect("account_signup")
-
+            if guest_credits <= 0:
+                messages.warning(request, "🎉 Trial ended. Please create a free account to continue.")
+                return render(request, "generator/generate.html", {
+                    "prompt": prompt,
+                    "output": "",
+                    "selected_template": selected_template,
+                    "error": "",
+                    "guest_credits": 0,
+                    "trial_ended": True,
+                })
 
         try:
-            # Template handling
-            if selected_template == "blog":
-                final_prompt = f"Write a friendly blog post introduction about: {prompt}"
-            elif selected_template == "product":
-                final_prompt = f"Create an SEO product description for: {prompt}"
-            elif selected_template == "caption":
-                final_prompt = f"Write a catchy Instagram caption for: {prompt}"
-            elif selected_template == "ad":
-                final_prompt = f"Write a high-converting Google ad headline and description for: {prompt}"
-            elif selected_template == "title":
-                final_prompt = f"Write a compelling product title for: {prompt}"
-            elif selected_template == "bullets":
-                final_prompt = f"List 5 Amazon-style bullet features for: {prompt}"
-            elif selected_template == "faq":
-                final_prompt = f"Generate 3 frequently asked questions and answers about: {prompt}"
-            elif selected_template == "outline":
-                final_prompt = f"Give a blog post outline for a post about: {prompt}"
-            elif selected_template == "newsletter":
-                final_prompt = f"Write a friendly email newsletter about: {prompt}"
-            elif selected_template == "testimonial":
-                final_prompt = f"Write a customer testimonial for a product like: {prompt}"
-            else:
-                final_prompt = prompt
+            # Template Conversion
+            prompt_map = {
+                "blog": f"Write a friendly blog post introduction about: {prompt}",
+                "product": f"Create an SEO product description for: {prompt}",
+                "caption": f"Write a catchy Instagram caption for: {prompt}",
+                "ad": f"Write a high-converting Google ad headline and description for: {prompt}",
+                "title": f"Write a compelling product title for: {prompt}",
+                "bullets": f"List 5 Amazon-style bullet features for: {prompt}",
+                "faq": f"Generate 3 frequently asked questions and answers about: {prompt}",
+                "outline": f"Give a blog post outline for a post about: {prompt}",
+                "newsletter": f"Write a friendly email newsletter about: {prompt}",
+                "testimonial": f"Write a customer testimonial for a product like: {prompt}",
+            }
+            final_prompt = prompt_map.get(selected_template, prompt)
 
+            # OpenAI Generation
             response = client.chat.completions.create(
                 model="gpt-3.5-turbo",
                 messages=[{"role": "user", "content": final_prompt}]
             )
-
             output = response.choices[0].message.content
 
-            # 💳 Deduct credits
+            # Credit Deduction
             if request.user.is_authenticated:
                 profile.credits -= 1
                 profile.save()
-            else:
-                guest_credits -= 1
-                request.session["guest_credits"] = guest_credits
-
-                # If guest is out of credits, set cookie to block future trials
-                if guest_credits <= 0:
-                    request.session["guest_credits"] = -1
-                    response = render(request, "generator/generate.html", {
-                        "prompt": prompt,
-                        "output": output,
-                        "selected_template": selected_template,
-                        "error": error,
-                        "trial_ended": True,
-                        "guest_credits": 0  # ✅ Add this line
-                    })
-                    response.set_cookie("aiwriter_trial", "true", max_age=60*60*24*365)
-                    return response
-
-
-
-            # Log it (only for logged-in users)
-            if request.user.is_authenticated:
                 GenerationLog.objects.create(user=request.user, prompt=final_prompt, output=output)
+            else:
+                request.session["guest_credits"] -= 1
+                trial_log.trial_uses += 1
+                trial_log.user_agent = user_agent
+
+                # Add this to log abuse
+                if trial_log.trial_uses >= 3:
+                    trial_log.abuse_score += 1
+
+                trial_log.save()
+
+                if request.session["guest_credits"] <= 0:
+                    messages.warning(request, "🎉 You’ve used your 3 free credits! Create a free account to unlock 10 more credits and save your content history.")
 
         except APIConnectionError:
             error = "⚠️ Oops! You're offline or OpenAI servers are unreachable."
@@ -170,11 +170,12 @@ def generate_view(request):
             error = "⚠️ An unknown error occurred. Please try again later."
 
     return render(request, "generator/generate.html", {
-    "prompt": prompt,
-    "output": output,
-    "selected_template": selected_template,
-    "error": error,
-    "guest_credits": request.session.get("guest_credits") if not request.user.is_authenticated else None,
+        "prompt": prompt,
+        "output": output,
+        "selected_template": selected_template,
+        "error": error,
+        "guest_credits": request.session.get("guest_credits") if is_guest else None,
+        "trial_ended": request.session.get("guest_credits") == 0 if is_guest else False
     })
 
 
