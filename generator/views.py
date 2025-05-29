@@ -57,27 +57,41 @@ def generate_view(request):
     user_agent = request.META.get("HTTP_USER_AGENT", "")
     is_guest = not request.user.is_authenticated
 
-    # Clear guest credit display if authenticated
+    # Reset guest session data if authenticated
     if request.user.is_authenticated:
         request.session.pop("guest_credits", None)
-
-    # Guest Trial Enforcement
+        trial_session = TrialSessionLog.objects.filter(ip_address=ip_address).first()
+        if trial_session:
+            trial_session.linked_user = request.user
+            trial_session.registered = True
+            trial_session.save()
     else:
-        trial_log, created = TrialSessionLog.objects.get_or_create(ip_address=ip_address)
+        # Get or create trial session
+        trial_session, _ = TrialSessionLog.objects.get_or_create(ip_address=ip_address)
 
-        # Initialize session trial counter
+        # Detect incognito mode (session does not persist)
+        try:
+            if not request.session.get("has_trial_cookie"):
+                request.session["has_trial_cookie"] = True
+                trial_session.is_incognito = True
+                trial_session.abuse_score += 1
+                print("🚩 Incognito mode likely detected on first visit.")
+                trial_session.save()
+        except Exception as e:
+            print("Incognito detection failed:", e)
+
+
+        # First-time session setup
         if "guest_credits" not in request.session:
-            # First time — allow 3 credits unless already blocked
-            if trial_log.trial_uses >= 3:
+            if trial_session.trial_uses >= 3:
                 request.session["guest_credits"] = 0
-                trial_log.abuse_flag = True
-                trial_log.save()
             else:
                 request.session["guest_credits"] = 3
 
         if request.session["guest_credits"] <= 0:
-            trial_log.abuse_flag = True
-            trial_log.save()
+            trial_session.abuse_flag = True
+            trial_session.abuse_score += 1
+            trial_session.save()
             messages.warning(request, "🎉 You’ve used your 3 free credits! Create a free account to unlock 10 more credits and save your content history.")
             return render(request, "generator/generate.html", {
                 "prompt": "",
@@ -88,25 +102,23 @@ def generate_view(request):
                 "trial_ended": True,
             })
 
-    # POST handling (Generate Request)
+    # POST (Generate request)
     if request.method == "POST":
         prompt = request.POST.get("prompt")
         selected_template = request.POST.get("template")
 
-        # Credit Check
         if request.user.is_authenticated:
             profile = request.user.userprofile
             if profile.credits <= 0:
                 messages.error(request, "❌ You’ve run out of credits. Please upgrade your plan.")
                 return redirect("buy_credits")
-            
-            # Optional: If user previously had a trial session from same IP
-            ip_address = get_client_ip(request)
-            trial_session = TrialSessionLog.objects.filter(ip_address=ip_address).first()
         else:
-            guest_credits = request.session.get("guest_credits", 3)
+            guest_credits = request.session.get("guest_credits", 0)
             if guest_credits <= 0:
-                messages.warning(request, "🎉 Trial ended. Please create a free account to continue.")
+                trial_session.abuse_score += 1
+                trial_session.abuse_flag = True
+                trial_session.save()
+                messages.warning(request, "🎉 You’ve used your 3 free credits! Create a free account to unlock 10 more credits and save your content history.")
                 return render(request, "generator/generate.html", {
                     "prompt": prompt,
                     "output": "",
@@ -116,44 +128,41 @@ def generate_view(request):
                     "trial_ended": True,
                 })
 
-        try:
-            # Template Conversion
-            prompt_map = {
-                "blog": f"Write a friendly blog post introduction about: {prompt}",
-                "product": f"Create an SEO product description for: {prompt}",
-                "caption": f"Write a catchy Instagram caption for: {prompt}",
-                "ad": f"Write a high-converting Google ad headline and description for: {prompt}",
-                "title": f"Write a compelling product title for: {prompt}",
-                "bullets": f"List 5 Amazon-style bullet features for: {prompt}",
-                "faq": f"Generate 3 frequently asked questions and answers about: {prompt}",
-                "outline": f"Give a blog post outline for a post about: {prompt}",
-                "newsletter": f"Write a friendly email newsletter about: {prompt}",
-                "testimonial": f"Write a customer testimonial for a product like: {prompt}",
-            }
-            final_prompt = prompt_map.get(selected_template, prompt)
+        # Compose prompt based on template
+        prompt_map = {
+            "blog": f"Write a friendly blog post introduction about: {prompt}",
+            "product": f"Create an SEO product description for: {prompt}",
+            "caption": f"Write a catchy Instagram caption for: {prompt}",
+            "ad": f"Write a high-converting Google ad headline and description for: {prompt}",
+            "title": f"Write a compelling product title for: {prompt}",
+            "bullets": f"List 5 Amazon-style bullet features for: {prompt}",
+            "faq": f"Generate 3 frequently asked questions and answers about: {prompt}",
+            "outline": f"Give a blog post outline for a post about: {prompt}",
+            "newsletter": f"Write a friendly email newsletter about: {prompt}",
+            "testimonial": f"Write a customer testimonial for a product like: {prompt}",
+        }
+        final_prompt = prompt_map.get(selected_template, prompt)
 
-            # OpenAI Generation
+        try:
             response = client.chat.completions.create(
                 model="gpt-3.5-turbo",
                 messages=[{"role": "user", "content": final_prompt}]
             )
             output = response.choices[0].message.content
 
-            # Credit Deduction
+            # Deduct credit and save
             if request.user.is_authenticated:
                 profile.credits -= 1
                 profile.save()
                 GenerationLog.objects.create(user=request.user, prompt=final_prompt, output=output)
             else:
                 request.session["guest_credits"] -= 1
-                trial_log.trial_uses += 1
-                trial_log.user_agent = user_agent
-
-                # Add this to log abuse
-                if trial_log.trial_uses >= 3:
-                    trial_log.abuse_score += 1
-
-                trial_log.save()
+                trial_session.trial_uses += 1
+                trial_session.user_agent = user_agent
+                # trial_session.is_incognito preserved from earlier detection
+                if trial_session.trial_uses >= 3:
+                    trial_session.abuse_score += 1
+                trial_session.save()
 
                 if request.session["guest_credits"] <= 0:
                     messages.warning(request, "🎉 You’ve used your 3 free credits! Create a free account to unlock 10 more credits and save your content history.")

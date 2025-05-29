@@ -1,3 +1,10 @@
+## [0.4.0] - 2025-05-29
+### Added
+- Intelligent guest trial tracking with abuse score and incognito detection
+- Admin panel enhancements: incognito flag, linked user, registered status
+- Patched generate view to record trials early and robustly
+- Added fallback incognito detection logic with session cookie checks
+
 # 📜 CHANGELOG – AIWriter
 
 ## [0.3.0] - 2025-05-22
