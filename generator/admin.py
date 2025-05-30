@@ -1,7 +1,6 @@
 # generator/admin.py
 from django.contrib import admin
-from .models import GenerationLog
-from .models import TrialSessionLog
+from .models import GenerationLog, TrialSessionLog, PurchaseLog
 from django.contrib.admin import SimpleListFilter
 
 
@@ -35,3 +34,11 @@ class TrialSessionLogAdmin(admin.ModelAdmin):
     def short_user_agent(self, obj):
         return obj.user_agent[:60] + "..." if len(obj.user_agent) > 60 else obj.user_agent
     short_user_agent.short_description = "User Agent"
+
+
+
+@admin.register(PurchaseLog)
+class PurchaseLogAdmin(admin.ModelAdmin):
+    list_display = ("user", "credits", "amount", "status", "created_at")
+    search_fields = ("user__email", "stripe_session_id")
+    list_filter = ("status", "created_at")

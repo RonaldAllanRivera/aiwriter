@@ -33,3 +33,14 @@ class TrialSessionLog(models.Model):
         return f"{self.ip_address} ({self.trial_uses} used)"
 
 
+
+class PurchaseLog(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    stripe_session_id = models.CharField(max_length=255, unique=True)
+    credits = models.IntegerField()
+    amount = models.DecimalField(max_digits=8, decimal_places=2)
+    status = models.CharField(max_length=50, default="completed")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Purchase by {self.user.email} - {self.credits} credits - ${self.amount}"

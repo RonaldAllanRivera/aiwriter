@@ -1,11 +1,19 @@
+# 📜 CHANGELOG – AIWriter
+
+## [0.5.0] - 2025-05-30
+### Added
+- PurchaseLog model to track user Stripe purchases
+- PurchaseLog admin panel support for easy monitoring
+- Stripe webhook integration with ENVIRONMENT toggle
+- Webhooks safely disabled in development environment
+- Automatic status update of purchases via checkout.session.completed
+
 ## [0.4.0] - 2025-05-29
 ### Added
 - Intelligent guest trial tracking with abuse score and incognito detection
 - Admin panel enhancements: incognito flag, linked user, registered status
 - Patched generate view to record trials early and robustly
 - Added fallback incognito detection logic with session cookie checks
-
-# 📜 CHANGELOG – AIWriter
 
 ## [0.3.0] - 2025-05-22
 ### Added

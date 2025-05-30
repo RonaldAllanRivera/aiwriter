@@ -16,6 +16,9 @@ from django.http import JsonResponse
 
 from .models import GenerationLog, TrialSessionLog
 
+# Webhook handling for Stripe (disabled in development)
+import json
+
 
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
@@ -203,11 +206,43 @@ def history_view(request):
 
 
 # For Stripe Payment
+@csrf_exempt
+def stripe_webhook(request):
+    if settings.ENVIRONMENT != "production":
+        return JsonResponse({'message': 'Webhook disabled in development'}, status=200)
+
+    payload = request.body
+    sig_header = request.META.get('HTTP_STRIPE_SIGNATURE', '')
+    event = None
+
+    try:
+        event = stripe.Webhook.construct_event(
+            payload, sig_header, settings.STRIPE_WEBHOOK_SECRET
+        )
+    except ValueError:
+        return JsonResponse({'error': 'Invalid payload'}, status=400)
+    except stripe.error.SignatureVerificationError:
+        return JsonResponse({'error': 'Invalid signature'}, status=400)
+
+    if event['type'] == 'checkout.session.completed':
+        session = event['data']['object']
+        stripe_session_id = session.get("id")
+        try:
+            from .models import PurchaseLog
+            purchase = PurchaseLog.objects.get(stripe_session_id=stripe_session_id)
+            purchase.status = "completed"
+            purchase.save()
+            print(f"✅ Purchase {stripe_session_id} marked as completed.")
+        except PurchaseLog.DoesNotExist:
+            print("⚠️ PurchaseLog not found for session:", stripe_session_id)
+
+    return JsonResponse({'status': 'success'}, status=200)
+
+
 def buy_credits(request):
     return render(request, "generator/buy_credits.html", {
     "stripe_publishable_key": settings.STRIPE_PUBLISHABLE_KEY
 })
-
 
 
 @csrf_exempt
@@ -231,6 +266,17 @@ def create_checkout_session(request):
             cancel_url=request.build_absolute_uri('/buy-credits/'),
             metadata={'user_id': request.user.id}
         )
+
+        # ✅ NEW: Create PurchaseLog entry
+        from .models import PurchaseLog  # Make sure import exists at the top
+        PurchaseLog.objects.create(
+            user=request.user,
+            stripe_session_id=checkout_session.id,
+            credits=credit_amount,
+            amount=credit_amount,  # You can adjust if you support discounts later
+            status="pending"
+        )
+
         return JsonResponse({'id': checkout_session.id})
 
 def payment_success(request):
