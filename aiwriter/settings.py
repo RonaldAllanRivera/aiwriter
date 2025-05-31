@@ -6,6 +6,8 @@ from dotenv import load_dotenv
 load_dotenv()
 from django.conf import settings
 
+SITE_NAME = os.getenv("SITE_NAME", "CopySpark")
+
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
 
 STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "")
@@ -74,6 +76,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'aiwriter.context_processors.site_name',
             ],
         },
     },

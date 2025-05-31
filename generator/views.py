@@ -1,4 +1,4 @@
-#generator/views.py
+# generator/views.py
 from django.shortcuts import render
 from django.conf import settings
 import openai
@@ -72,16 +72,12 @@ def generate_view(request):
         # Get or create trial session
         trial_session, _ = TrialSessionLog.objects.get_or_create(ip_address=ip_address)
 
-        # Detect incognito mode (session does not persist)
-        try:
-            if not request.session.get("has_trial_cookie"):
-                request.session["has_trial_cookie"] = True
-                trial_session.is_incognito = True
-                trial_session.abuse_score += 1
-                print("🚩 Incognito mode likely detected on first visit.")
-                trial_session.save()
-        except Exception as e:
-            print("Incognito detection failed:", e)
+        # Only flag incognito if trial_uses already exists        
+        if trial_session.trial_uses > 0 and not trial_session.is_incognito:
+            trial_session.is_incognito = True
+            trial_session.abuse_score += 1
+            trial_session.save()
+            print("🚩 Incognito likely detected after previous usage.")  
 
 
         # First-time session setup
@@ -256,7 +252,7 @@ def create_checkout_session(request):
             line_items=[{
                 'price_data': {
                     'currency': 'usd',
-                    'product_data': {'name': f"{credit_amount} AIWriter Credits"},
+                    'product_data': {'name': f"{credit_amount} {settings.SITE_NAME} Credits"},
                     'unit_amount': price_in_cents,
                 },
                 'quantity': 1,
