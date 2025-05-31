@@ -5,7 +5,7 @@ AIWriter is a Django-based web app powered by OpenAI. It helps small businesses 
 ---
 
 ## 🚀 Features
-
+- 🔧 Environment-driven authentication flow (email verification based on production mode)
 - 💳 Stripe payments with production-ready webhook support (PurchaseLog tracking)
 - 🕵️ Intelligent trial system with incognito mode detection and abuse tracking
 - 🔐 Email-only authentication with django-allauth

@@ -1,5 +1,12 @@
 # 📜 CHANGELOG – AIWriter
 
+## [0.5.1] - 2025-05-31
+### Changed
+- Switched ACCOUNT_EMAIL_VERIFICATION logic to use ENVIRONMENT instead of DEBUG
+- Added SITE_NAME environment variable for dynamic SaaS branding
+- Templates and checkout sessions now fully use SITE_NAME dynamically
+- Cleaner SaaS-ready environment separation for authentication flows
+
 ## [0.5.0] - 2025-05-30
 ### Added
 - PurchaseLog model to track user Stripe purchases
