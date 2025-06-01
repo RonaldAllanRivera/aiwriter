@@ -1,9 +1,51 @@
 # 📜 CHANGELOG – AIWriter
 
+## [1.2.0] — 2025-06-01
 
-## [0.6.0] - 2025-06-02
+### Added
 
-### Major Release — Full SaaS Payment Live System
+- Abuse Alert system fully integrated
+- Admin email notification when abuse threshold is reached
+- ENVIRONMENT-safe: abuse emails only sent in production mode
+- Abuse scoring dynamically monitored inside guest trial logic
+- Dynamic SITE_NAME used in alert email subject
+
+---
+
+## [1.1.0] — 2025-06-01
+
+### Added
+
+- Fully stable SaaS Stripe Payment System
+- Webhook verification added for Stripe `checkout.session.completed`
+- PurchaseLog model to track user Stripe purchases
+- Stripe metadata protection for credits, user ID, and pack purchased
+- Dynamic SITE_URL for multi-environment flexibility
+- SEO-optimized homepage with conversion-first CTA
+- SaaS-ready URL structure finalized
+
+### Fixed
+
+- Circular import issues with generator.urls removed
+- AllAuth URLs restored to prevent account_login errors
+- payment-success rendering path fixed for templates
+
+---
+
+## [1.0.0] — 2025-06-01
+
+### Added
+
+- Django-Allauth email login system (username fully removed)
+- Google OAuth login support
+- Guest trial system with IP tracking
+- Incognito detection via session analysis
+- Stripe full SaaS integration: buy credits, webhook, user credit update
+- ENVIRONMENT-driven payment and webhook toggles for dev/prod separation
+- Full SaaS production-ready credit logic
+- Secure OpenAI integration with GPT-3.5 Turbo API
+
+## [0.6.0] - 2025-06-01
 
 ### Added
 - Fully cleaned views.py with final SaaS structure (home, generate, Stripe payments, webhook)

@@ -159,6 +159,12 @@ ACCOUNT_RATE_LIMITS = {
     "login_failed": "5/m"
 }
 
+ABUSE_ALERT_THRESHOLD = 3
+
+DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "noreply@copyspark.com")
+DEFAULT_ADMIN_EMAIL = os.getenv("DEFAULT_ADMIN_EMAIL", "your-admin@email.com")
+
+
 if ENVIRONMENT == "production":
     EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
     EMAIL_HOST = os.getenv("EMAIL_HOST")

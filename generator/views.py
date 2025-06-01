@@ -1,31 +1,51 @@
 # generator/views.py
-from django.shortcuts import render, redirect
+# Standard library
+import json
+
+# Django core imports
 from django.conf import settings
-import openai
-from openai import APIConnectionError, RateLimitError, AuthenticationError, OpenAIError
-from django.core.paginator import Paginator
-from django.contrib.auth.decorators import login_required
-from django.contrib import messages
 from django.shortcuts import render, redirect
-from users.models import UserProfile, CustomUser
-
-import stripe
-from django.views.decorators.csrf import csrf_exempt
 from django.http import JsonResponse, HttpResponse
+from django.contrib import messages
+from django.core.paginator import Paginator
+from django.views.decorators.csrf import csrf_exempt
+from django.core.mail import send_mail
+from django.contrib.auth.decorators import login_required
 
+# Third-party libraries
+import openai
+import stripe
+from openai import APIConnectionError, RateLimitError, AuthenticationError, OpenAIError
+
+# Your app imports (local)
+from users.models import UserProfile, CustomUser
 from .models import GenerationLog, TrialSessionLog, PurchaseLog
 from .constants import STRIPE_CREDIT_PACKS
-
-
-
-# Webhook handling for Stripe (disabled in development)
-import json
 
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
 # Initialize OpenAI client with your API key
 client = openai.OpenAI(api_key=settings.OPENAI_API_KEY)
+
+def send_abuse_alert(trial_session):
+    if settings.ENVIRONMENT != "production":
+        return
+
+    subject = f"🚨 {settings.SITE_NAME} Abuse Alert Detected"
+    message = f"""
+Abuse threshold exceeded on trial system!
+
+IP Address: {trial_session.ip_address}
+User Agent: {trial_session.user_agent}
+Incognito: {"Yes" if trial_session.is_incognito else "No"}
+Abuse Score: {trial_session.abuse_score}
+Timestamp: {trial_session.created_at.strftime("%Y-%m-%d %H:%M:%S")}
+"""
+    admin_email = settings.DEFAULT_ADMIN_EMAIL
+    send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [admin_email], fail_silently=False)
+
+
 
 def home_view(request):
     if request.user.is_authenticated:
@@ -92,6 +112,11 @@ def generate_view(request):
             trial_session.abuse_flag = True
             trial_session.abuse_score += 1
             trial_session.save()
+
+            # Trigger abuse alert if threshold reached
+            if trial_session.abuse_score >= settings.ABUSE_ALERT_THRESHOLD:
+                send_abuse_alert(trial_session)
+
             messages.warning(request, "🎉 You’ve used your 3 free credits! Create a free account to unlock 10 more credits and save your content history.")
             return render(request, "generator/generate.html", {
                 "prompt": "",

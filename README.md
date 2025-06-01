@@ -1,24 +1,23 @@
-# 📝 AIWriter – AI Content Generator for Small Businesses
+# 📝 AIWriter – AI Content SaaS
 
 AIWriter is a fully SaaS-ready Django web app powered by OpenAI and Stripe. It allows small business owners to generate high-quality content like blog posts, FAQs, product descriptions, and ads using AI.
 
----
 
 ## 🚀 Features
 - ⚙ Dynamic environment config (ENVIRONMENT switch: development / production)
 - 🏷 Dynamic SaaS branding with SITE_NAME variable
-- 💳 Stripe full SaaS payment system (Checkout Session + Webhooks)
-- 🔁 PurchaseLog model for secure credit tracking
-- 🎯 SEO-optimized homepage with conversion-first CTA
-- 🕵️ Intelligent trial system with abuse detection and incognito mode tracking
-- 🔐 Email-only authentication via django-allauth (username fully removed)
-- 🔑 Google OAuth fast login integration
-- 🧠 OpenAI GPT-3.5 integration for content generation
-- ✨ Template-based prompts (blog, FAQs, ads, etc.)
+- 💳 SaaS-ready payment system via Stripe Checkout + Webhooks
+- 📦 Credit Packs: flexible pricing via constants.py
+- 🎯 SEO-optimized homepage with CTA funnel
+- 🔒 Trial system with abuse detection + incognito tracking
+- 📬 Admin email notifications for abuse alerts
+- 🔑 Email-only login via django-allauth (username fully removed)
+- 🔐 Google OAuth fast login integration
+- 🧠 OpenAI GPT-3.5 Turbo AI content generation
+- 🗂 Template system: blogs, ads, FAQs and more
 - 📚 Personal generation history with pagination
 - 🎨 Fully styled UI with Tailwind CSS + Alpine.js
-- 🔐 Secure user credits with full payment audit logging
-- ✅ Deployment-ready for Render, Railway, Fly.io or Heroku
+- ✅ Deployment-ready on Render, Railway, Fly.io
 
 
 ---
@@ -53,22 +52,28 @@ SECRET_KEY=your-django-secret-key
 DEBUG=True
 ENVIRONMENT=development
 SITE_URL=http://127.0.0.1:8000
+SITE_NAME=CopySpark
 
-OPENAI_API_KEY=your-openai-api-key
+OPENAI_API_KEY=your-openai-key
 
 EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend
 EMAIL_HOST=smtp.example.com
 EMAIL_PORT=587
 EMAIL_USE_TLS=True
-EMAIL_HOST_USER=you@example.com
+EMAIL_HOST_USER=your@email.com
 EMAIL_HOST_PASSWORD=your-password
 
 GOOGLE_CLIENT_ID=your-google-client-id
-GOOGLE_CLIENT_SECRET=your-google-secret
+GOOGLE_CLIENT_SECRET=your-google-client-secret
 ALLOWED_HOSTS=127.0.0.1,localhost
 
 STRIPE_SECRET_KEY=your-stripe-secret-key
 STRIPE_PUBLISHABLE_KEY=your-stripe-publishable-key
+STRIPE_WEBHOOK_SECRET=your-stripe-webhook-secret
+
+DEFAULT_FROM_EMAIL=noreply@copyspark.com
+DEFAULT_ADMIN_EMAIL=your-admin@email.com
+
 
 ```
 
