@@ -7,14 +7,15 @@ from django.core.paginator import Paginator
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.shortcuts import render, redirect
-from users.models import UserProfile
+from users.models import UserProfile, CustomUser
 
 import stripe
 from django.views.decorators.csrf import csrf_exempt
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 
 from .models import GenerationLog, TrialSessionLog, PurchaseLog
 from .constants import STRIPE_CREDIT_PACKS
+
 
 
 # Webhook handling for Stripe (disabled in development)
@@ -201,40 +202,6 @@ def history_view(request):
     return render(request, "generator/history.html", {"page_obj": page_obj})
 
 
-# For Stripe Payment
-@csrf_exempt
-def stripe_webhook(request):
-    if settings.ENVIRONMENT != "production":
-        return JsonResponse({'message': 'Webhook disabled in development'}, status=200)
-
-    payload = request.body
-    sig_header = request.META.get('HTTP_STRIPE_SIGNATURE', '')
-    event = None
-
-    try:
-        event = stripe.Webhook.construct_event(
-            payload, sig_header, settings.STRIPE_WEBHOOK_SECRET
-        )
-    except ValueError:
-        return JsonResponse({'error': 'Invalid payload'}, status=400)
-    except stripe.error.SignatureVerificationError:
-        return JsonResponse({'error': 'Invalid signature'}, status=400)
-
-    if event['type'] == 'checkout.session.completed':
-        session = event['data']['object']
-        stripe_session_id = session.get("id")
-        try:
-            from .models import PurchaseLog
-            purchase = PurchaseLog.objects.get(stripe_session_id=stripe_session_id)
-            purchase.status = "completed"
-            purchase.save()
-            print(f"✅ Purchase {stripe_session_id} marked as completed.")
-        except PurchaseLog.DoesNotExist:
-            print("⚠️ PurchaseLog not found for session:", stripe_session_id)
-
-    return JsonResponse({'status': 'success'}, status=200)
-
-
 def buy_credits(request):
     return render(request, "generator/buy_credits.html", {
         "credit_packs": STRIPE_CREDIT_PACKS
@@ -310,4 +277,58 @@ def payment_success(request):
 
     messages.success(request, f"✅ {credits} credits added successfully!")
     return render(request, 'generator/payment_success.html')
+
+
+@csrf_exempt
+def stripe_webhook(request):
+    payload = request.body
+    sig_header = request.META.get("HTTP_STRIPE_SIGNATURE")
+    webhook_secret = settings.STRIPE_WEBHOOK_SECRET
+
+    if settings.ENVIRONMENT == "production":
+        try:
+            event = stripe.Webhook.construct_event(payload, sig_header, webhook_secret)
+        except stripe.error.SignatureVerificationError:
+            return HttpResponse(status=400)
+        except Exception:
+            return HttpResponse(status=400)
+    else:
+        # In dev mode, skip verification (for testing only)
+        try:
+            event = json.loads(payload)
+        except Exception:
+            return HttpResponse(status=400)
+
+    if event["type"] == "checkout.session.completed":
+        session = event["data"]["object"]
+        session_id = session["id"]
+        metadata = session.get("metadata", {})
+
+        try:
+            user = CustomUser.objects.get(id=metadata.get("user_id"))
+            credits = int(metadata.get("credits", 0))
+
+            # Avoid double credit if already processed
+            log, created = PurchaseLog.objects.get_or_create(
+                user=user,
+                stripe_session_id=session_id,
+                defaults={
+                    "credits": credits,
+                    "amount": session["amount_total"] / 100,
+                    "status": "completed"
+                }
+            )
+
+            if not created and log.status != "completed":
+                user.userprofile.credits += credits
+                user.userprofile.save()
+                log.status = "completed"
+                log.save()
+
+        except Exception as e:
+            print("Webhook processing error:", str(e))
+            return HttpResponse(status=500)
+
+    return HttpResponse(status=200)
+
 

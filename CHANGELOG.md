@@ -1,5 +1,29 @@
 # 📜 CHANGELOG – AIWriter
 
+
+## [0.6.0] - 2025-06-02
+
+### Major Release — Full SaaS Payment Live System
+
+### Added
+- Fully cleaned views.py with final SaaS structure (home, generate, Stripe payments, webhook)
+- Stripe Webhook integration (checkout.session.completed synced to backend)
+- Metadata protection inside Stripe Checkout Sessions (user ID, credits, pack)
+- Final payment flow with safe double-credit prevention
+- ENVIRONMENT switch (production vs development) controlling webhook validation
+- SEO-optimized homepage template added (home.html with Tailwind design)
+- Trial system refactor to better isolate guest users
+- Full URL structure polished with clean generator.urls removal
+- Dynamic SITE_URL used for all Stripe callback URLs
+
+### Fixed
+- Corrected circular imports when including generator.urls
+- Correct account_login NoReverseMatch errors by restoring allauth.urls include
+- Resolved payment-success rendering issues due to template search path
+- Cleaned Stripe metadata handling after payment completion
+
+
+
 ## [0.5.2] - 2025-06-01
 
 ### Added

@@ -1,24 +1,25 @@
 # 📝 AIWriter – AI Content Generator for Small Businesses
 
-AIWriter is a Django-based web app powered by OpenAI. It helps small businesses generate high-quality content like blog posts, product descriptions, and ads.
+AIWriter is a fully SaaS-ready Django web app powered by OpenAI and Stripe. It allows small business owners to generate high-quality content like blog posts, FAQs, product descriptions, and ads using AI.
 
 ---
 
 ## 🚀 Features
-- 🔧 Environment-driven authentication flow (email verification based on production mode)
-- 🏷 Dynamic SaaS branding with SITE_NAME environment variable (supports CopySpark and future rebrands)
-- 💳 Stripe payments with production-ready webhook support (PurchaseLog tracking)
-- 🕵️ Intelligent trial system with incognito mode detection and abuse tracking
-- 🔐 Email-only authentication with django-allauth
-- 🔁 Social login via Google (fast login experience)
-- 🧠 AI-powered content generation using GPT-3.5
-- 🧾 Prompt templates (blog, FAQ, product intro, etc.)
+- ⚙ Dynamic environment config (ENVIRONMENT switch: development / production)
+- 🏷 Dynamic SaaS branding with SITE_NAME variable
+- 💳 Stripe full SaaS payment system (Checkout Session + Webhooks)
+- 🔁 PurchaseLog model for secure credit tracking
+- 🎯 SEO-optimized homepage with conversion-first CTA
+- 🕵️ Intelligent trial system with abuse detection and incognito mode tracking
+- 🔐 Email-only authentication via django-allauth (username fully removed)
+- 🔑 Google OAuth fast login integration
+- 🧠 OpenAI GPT-3.5 integration for content generation
+- ✨ Template-based prompts (blog, FAQs, ads, etc.)
 - 📚 Personal generation history with pagination
-- 🎨 Fully styled UI with Tailwind + Alpine.js
-- 💡 Login-required views with helpful messages
-- 🏠 Smart root URL: redirects or shows welcome page
-- 🔐 Secure custom user model with no username field
-- ✅ Ready for deployment on Render, Heroku, etc.
+- 🎨 Fully styled UI with Tailwind CSS + Alpine.js
+- 🔐 Secure user credits with full payment audit logging
+- ✅ Deployment-ready for Render, Railway, Fly.io or Heroku
+
 
 ---
 
@@ -47,9 +48,6 @@ python manage.py runserver
 ---
 
 ## 📁 Environment Variables (.env)
-
-## 📁 Environment Variables (.env)
-
 ```env
 SECRET_KEY=your-django-secret-key
 DEBUG=True
