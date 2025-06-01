@@ -8,6 +8,8 @@ from django.conf import settings
 
 SITE_NAME = os.getenv("SITE_NAME", "CopySpark")
 
+SITE_URL = os.getenv("SITE_URL", "http://127.0.0.1:8000")
+
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
 
 STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "")

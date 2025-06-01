@@ -1,9 +1,8 @@
 # generator/views.py
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from django.conf import settings
 import openai
 from openai import APIConnectionError, RateLimitError, AuthenticationError, OpenAIError
-from .models import GenerationLog
 from django.core.paginator import Paginator
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
@@ -14,11 +13,12 @@ import stripe
 from django.views.decorators.csrf import csrf_exempt
 from django.http import JsonResponse
 
-from .models import GenerationLog, TrialSessionLog
+from .models import GenerationLog, TrialSessionLog, PurchaseLog
+from .constants import STRIPE_CREDIT_PACKS
+
 
 # Webhook handling for Stripe (disabled in development)
 import json
-
 
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
@@ -237,48 +237,77 @@ def stripe_webhook(request):
 
 def buy_credits(request):
     return render(request, "generator/buy_credits.html", {
-    "stripe_publishable_key": settings.STRIPE_PUBLISHABLE_KEY
-})
+        "credit_packs": STRIPE_CREDIT_PACKS
+    })
 
 
 @csrf_exempt
 def create_checkout_session(request):
-    if request.method == "POST":
-        credit_amount = int(request.POST.get("credits"))
-        price_in_cents = credit_amount * 100  # $1 = 1 credit
+    if request.method != "POST":
+        return redirect("buy_credits")
 
-        checkout_session = stripe.checkout.Session.create(
-            payment_method_types=["card"],
-            line_items=[{
-                'price_data': {
-                    'currency': 'usd',
-                    'product_data': {'name': f"{credit_amount} {settings.SITE_NAME} Credits"},
-                    'unit_amount': price_in_cents,
-                },
-                'quantity': 1,
-            }],
-            mode='payment',
-            success_url=request.build_absolute_uri('/payment/success/') + "?credits=" + str(credit_amount),
-            cancel_url=request.build_absolute_uri('/buy-credits/'),
-            metadata={'user_id': request.user.id}
-        )
+    pack = request.POST.get("pack")
+    pack_data = STRIPE_CREDIT_PACKS.get(pack)
 
-        # ✅ NEW: Create PurchaseLog entry
-        from .models import PurchaseLog  # Make sure import exists at the top
-        PurchaseLog.objects.create(
-            user=request.user,
-            stripe_session_id=checkout_session.id,
-            credits=credit_amount,
-            amount=credit_amount,  # You can adjust if you support discounts later
-            status="pending"
-        )
+    if not pack_data:
+        return redirect("buy_credits")
 
-        return JsonResponse({'id': checkout_session.id})
+    # ✅ Here is your fully dynamic URL based on settings.SITE_URL
+    success_url = f"{settings.SITE_URL}/payment-success/?session_id={{CHECKOUT_SESSION_ID}}"
+    cancel_url = f"{settings.SITE_URL}/buy-credits/"
+
+    session = stripe.checkout.Session.create(
+        payment_method_types=["card"],
+        mode="payment",
+        line_items=[{
+            "price_data": {
+                "currency": "usd",
+                "unit_amount": int(pack_data["price"] * 100),
+                "product_data": {"name": f"CopySpark {pack.capitalize()} Plan"},
+            },
+            "quantity": 1,
+        }],
+        success_url=success_url,
+        cancel_url=cancel_url,
+        metadata={
+            "credits": pack_data["credits"],
+            "pack": pack,
+            "user_id": request.user.id
+        },
+        customer_email=request.user.email
+    )
+
+    PurchaseLog.objects.create(
+        user=request.user,
+        stripe_session_id=session.id,
+        credits=pack_data['credits'],
+        amount=pack_data['price'],
+        status="pending"
+    )
+
+    return redirect(session.url)
+
+
 
 def payment_success(request):
-    credits = int(request.GET.get("credits", 0))
+    session_id = request.GET.get("session_id")
+
+    if not session_id:
+        messages.error(request, "Missing session information.")
+        return redirect("buy_credits")
+
+    try:
+        # Fetch the session data from Stripe
+        session = stripe.checkout.Session.retrieve(session_id)
+        credits = int(session.metadata.get("credits", 0))
+    except Exception as e:
+        messages.error(request, f"Failed to retrieve payment: {e}")
+        return redirect("buy_credits")
+
     profile = request.user.userprofile
     profile.credits += credits
     profile.save()
+
     messages.success(request, f"✅ {credits} credits added successfully!")
-    return redirect("generate")
+    return render(request, 'generator/payment_success.html')
+

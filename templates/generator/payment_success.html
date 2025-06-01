@@ -1,0 +1,11 @@
+{% extends "generator/base.html" %}
+{% load static %}
+{% block content %}
+<div class="max-w-2xl mx-auto mt-10 text-center bg-white p-8 rounded shadow">
+    <h1 class="text-3xl font-bold text-green-600 mb-4">✅ Payment Successful!</h1>
+    <p class="mb-6">Thank you for your purchase. Your credits have been added to your account.</p>
+    <a href="{% url 'generate' %}" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700">
+        Start Generating
+    </a>
+</div>
+{% endblock %}

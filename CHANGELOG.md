@@ -1,5 +1,19 @@
 # 📜 CHANGELOG – AIWriter
 
+## [0.5.2] - 2025-06-01
+
+### Added
+- Dynamic SITE_URL environment variable for flexible Stripe URL handling (local & prod safe)
+- Stripe success/cancel URL logic fully moved to environment-driven config
+- Securely retrieve Stripe session_id from success URL for credit allocation
+- PurchaseLog now fully records credits and amounts accurately post-purchase
+- SaaS payment flow now fully production-ready after Stripe metadata cleanup
+
+### Fixed
+- Corrected success URL string formatting for Stripe session redirection
+- Fixed multiple edge cases with credits not properly being applied after checkout
+
+
 ## [0.5.1] - 2025-05-31
 ### Changed
 - Switched ACCOUNT_EMAIL_VERIFICATION logic to use ENVIRONMENT instead of DEBUG

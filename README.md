@@ -6,6 +6,7 @@ AIWriter is a Django-based web app powered by OpenAI. It helps small businesses 
 
 ## 🚀 Features
 - 🔧 Environment-driven authentication flow (email verification based on production mode)
+- 🏷 Dynamic SaaS branding with SITE_NAME environment variable (supports CopySpark and future rebrands)
 - 💳 Stripe payments with production-ready webhook support (PurchaseLog tracking)
 - 🕵️ Intelligent trial system with incognito mode detection and abuse tracking
 - 🔐 Email-only authentication with django-allauth
@@ -47,9 +48,14 @@ python manage.py runserver
 
 ## 📁 Environment Variables (.env)
 
+## 📁 Environment Variables (.env)
+
 ```env
 SECRET_KEY=your-django-secret-key
 DEBUG=True
+ENVIRONMENT=development
+SITE_URL=http://127.0.0.1:8000
+
 OPENAI_API_KEY=your-openai-api-key
 
 EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend
@@ -62,6 +68,10 @@ EMAIL_HOST_PASSWORD=your-password
 GOOGLE_CLIENT_ID=your-google-client-id
 GOOGLE_CLIENT_SECRET=your-google-secret
 ALLOWED_HOSTS=127.0.0.1,localhost
+
+STRIPE_SECRET_KEY=your-stripe-secret-key
+STRIPE_PUBLISHABLE_KEY=your-stripe-publishable-key
+
 ```
 
 ---
