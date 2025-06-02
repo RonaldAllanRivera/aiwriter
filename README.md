@@ -4,6 +4,8 @@ AIWriter is a fully SaaS-ready Django web app powered by OpenAI and Stripe. It a
 
 
 ## 🚀 Features
+- 🌐 Render.com fully deployment-ready with one-click provisioning
+- 🔀 Automatic database switching: SQLite (dev) / PostgreSQL (prod)
 - ⚙ Dynamic environment config (ENVIRONMENT switch: development / production)
 - 🏷 Dynamic SaaS branding with SITE_NAME variable
 - 💳 SaaS-ready payment system via Stripe Checkout + Webhooks
@@ -39,7 +41,9 @@ cd aiwriter
 python -m venv venv
 venv\Scripts\activate  # or source venv/bin/activate
 pip install -r requirements.txt
-cp .env.example .env  # Add your API key and SMTP config
+# Create your .env file based on provided template
+cp .env.example .env
+# Fill in your Stripe, OpenAI, and email credentials
 python manage.py migrate
 python manage.py runserver
 ```
@@ -76,6 +80,18 @@ DEFAULT_ADMIN_EMAIL=your-admin@email.com
 
 
 ```
+
+## 🚀 Render Deployment
+
+- Fully compatible with Render.com PaaS
+- Use provided `render.yaml` blueprint for automated provisioning
+- DB, Static Files, and Gunicorn handled automatically
+
+1. Push repo to GitHub
+2. Connect GitHub repo inside Render
+3. Render auto-detects Django and provisions PostgreSQL automatically
+4. Set environment variables from your .env into Render Dashboard
+5. Done ✅
 
 ---
 

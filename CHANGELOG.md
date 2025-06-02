@@ -1,5 +1,18 @@
 # 📜 CHANGELOG – AIWriter
 
+## [1.3.0] — 2025-06-02
+
+### Added
+
+- Full SaaS Deployment Refactor for Render cloud platform
+- Automated deployment via `render.yaml` and `build.sh`
+- Fully cleaned settings.py with ENVIRONMENT switching and database flexibility
+- Static file serving via WhiteNoise in production
+- requirements.txt updated with production-safe dependencies
+- Deployment-ready for PostgreSQL in production, SQLite in development
+- Improved .env structure for local/prod separation
+
+
 ## [1.2.0] — 2025-06-01
 
 ### Added

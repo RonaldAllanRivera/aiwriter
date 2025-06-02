@@ -1,31 +1,52 @@
 # aiwriter/settings.py
-
-# ==== Imports & Path Setup ====
-import os
-from pathlib import Path
-from dotenv import load_dotenv
 import environ
 import dj_database_url
-
-# Load environment variables from .env file
+from pathlib import Path
+import os
+from dotenv import load_dotenv
 load_dotenv()
+from django.conf import settings
+
+# Build paths inside the project like this: BASE_DIR / 'subdir'.
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+# Load environment variables
 env = environ.Env()
-environ.Env.read_env(os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env'))
+environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
 
-# Build base project directory
-BASE_DIR = Path(__file__).resolve().parent.parent
 
-# ==== Site Information ====
+STATIC_URL = '/static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
 SITE_NAME = os.getenv("SITE_NAME", "CopySpark")
+
 SITE_URL = os.getenv("SITE_URL", "http://127.0.0.1:8000")
+
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
 
-# ==== Security ====
+STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "")
+
+OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
+
+# Build paths inside the project like this: BASE_DIR / 'subdir'.
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+
+# Quick-start development settings - unsuitable for production
+# See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
+
+# SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.getenv("SECRET_KEY", "dev-fallback-secret")
-DEBUG = os.getenv("DEBUG", "False").lower() == "true"
+
+
+# SECURITY WARNING: don't run with debug turned on in production!
+DEBUG = True
+
 ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "*").split(",")
 
-# ==== Installed Apps ====
+# Application definition
+
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -36,16 +57,16 @@ INSTALLED_APPS = [
     'generator',
     'accounts',
     'users',
-    "django.contrib.sites",
+]
+
+INSTALLED_APPS += [
+    "django.contrib.sites",     # Required for AllAuth
     "allauth",
     "allauth.account",
     "allauth.socialaccount",
     "allauth.socialaccount.providers.google",
 ]
 
-SITE_ID = 1
-
-# ==== Middleware ====
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
@@ -55,18 +76,16 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    # ✅ Required for django-allauth (v0.59+)
     "allauth.account.middleware.AccountMiddleware",
 ]
 
-# ==== URL & WSGI ====
 ROOT_URLCONF = 'aiwriter.urls'
-WSGI_APPLICATION = 'aiwriter.wsgi.application'
 
-# ==== Templates (REQUIRED for Admin & AllAuth) ====
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / "templates"],
+        'DIRS': [BASE_DIR / "templates"],  # ✅ Enable global template folder
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -79,7 +98,12 @@ TEMPLATES = [
     },
 ]
 
-# ==== Database (auto-switch production vs dev) ====
+WSGI_APPLICATION = 'aiwriter.wsgi.application'
+
+
+# Database
+# https://docs.djangoproject.com/en/5.2/ref/settings/#databases
+
 if ENVIRONMENT == "production":
     DATABASES = {
         'default': dj_database_url.config(
@@ -96,40 +120,72 @@ else:
         }
     }
 
-# ==== Password Validators ====
+# Password validation
+# https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
+
 AUTH_PASSWORD_VALIDATORS = [
-    {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
-    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator", "OPTIONS": {"min_length": 8}},
-    {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
-    {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
+    {
+        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
+    },
+    {
+        "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
+        "OPTIONS": {"min_length": 8},
+    },
+    {
+        "NAME": "django.contrib.auth.password_validation.CommonPasswordValidator",
+    },
+    {
+        "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",
+    },
 ]
 
-# ==== Internationalization ====
+
+
+# Internationalization
+# https://docs.djangoproject.com/en/5.2/topics/i18n/
+
 LANGUAGE_CODE = 'en-us'
+
 TIME_ZONE = 'UTC'
+
 USE_I18N = True
+
 USE_TZ = True
 
-# ==== Static Files (Render.com compatible) ====
-STATIC_URL = '/static/'
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
-# ==== Default Primary Key ====
+# Static files (CSS, JavaScript, Images)
+# https://docs.djangoproject.com/en/5.2/howto/static-files/
+
+STATIC_URL = 'static/'
+
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
+# Default primary key field type
+# https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
+
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# ==== Authentication Settings ====
-AUTH_USER_MODEL = "users.CustomUser"
+# AllAuth Behavior
+SITE_ID = 1
+
 ACCOUNT_USER_MODEL_USERNAME_FIELD = None
+
+
+# This line enables email confirmation only in production
 ACCOUNT_EMAIL_VERIFICATION = "mandatory" if ENVIRONMENT == "production" else "none"
+
 ACCOUNT_LOGIN_METHODS = {"email"}
 ACCOUNT_SIGNUP_FIELDS = ["email*", "password1*", "password2*"]
-ACCOUNT_RATE_LIMITS = {"login_failed": "5/m"}
+
+ACCOUNT_RATE_LIMITS = {
+    "login_failed": "5/m"
+}
+
 ABUSE_ALERT_THRESHOLD = 3
 
-# ==== Email Config ====
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "noreply@copyspark.com")
 DEFAULT_ADMIN_EMAIL = os.getenv("DEFAULT_ADMIN_EMAIL", "your-admin@email.com")
+
 
 if ENVIRONMENT == "production":
     EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
@@ -141,21 +197,20 @@ if ENVIRONMENT == "production":
 else:
     EMAIL_BACKEND = os.getenv("EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend")
 
+
+
 EMAIL_FAIL_SILENTLY = False
 
-# ==== Extra Security Headers ====
 SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
 X_FRAME_OPTIONS = 'DENY'
 
-# ==== Login / Logout URLs ====
 LOGIN_URL = "/accounts/login/"
 LOGIN_REDIRECT_URL = "/generate/"
 ACCOUNT_LOGOUT_REDIRECT_URL = "/accounts/login/"
 
-# ==== Social Account Providers ====
 SOCIALACCOUNT_PROVIDERS = {
     'google': {
         'APP': {
@@ -167,13 +222,14 @@ SOCIALACCOUNT_PROVIDERS = {
 }
 
 SOCIALACCOUNT_AUTO_SIGNUP = True
-ACCOUNT_LOGOUT_ON_GET = True
+ACCOUNT_LOGOUT_ON_GET = True  # optional: also auto-logout without confirmation
 SOCIALACCOUNT_ADAPTER = "accounts.adapters.AutoLinkSocialAccountAdapter"
+
 ACCOUNT_UNIQUE_EMAIL = True
 SOCIALACCOUNT_QUERY_EMAIL = True
 
-# ==== Stripe & OpenAI ====
+AUTH_USER_MODEL = "users.CustomUser"
+
+# Stripe Configuration
 STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY")
 STRIPE_PUBLISHABLE_KEY = os.getenv("STRIPE_PUBLISHABLE_KEY")
-STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "")
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
